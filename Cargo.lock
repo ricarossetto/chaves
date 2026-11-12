@@ -555,6 +555,7 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-single-instance",
  "windows",
+ "windows-future",
 ]
 
 [[package]]

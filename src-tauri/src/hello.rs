@@ -5,11 +5,13 @@ use windows::core::{HSTRING, PCWSTR};
 use windows::Security::Credentials::UI::{
     UserConsentVerificationResult, UserConsentVerifier, UserConsentVerifierAvailability,
 };
-use windows::Win32::Foundation::{LocalFree, HLOCAL};
+use windows::Win32::Foundation::{LocalFree, HWND, HLOCAL};
 use windows::Win32::Security::Cryptography::{
     CryptProtectData, CryptUnprotectData, CRYPT_INTEGER_BLOB, CRYPTPROTECT_UI_FORBIDDEN,
 };
-use windows::Win32::System::WinRT::{RoInitialize, RO_INIT_MULTITHREADED};
+use windows::Win32::System::WinRT::{
+    IUserConsentVerifierInterop, RoInitialize, RO_INIT_MULTITHREADED,
+};
 
 use crate::vault::Vault;
 
@@ -37,10 +39,21 @@ pub fn available() -> Result<bool, String> {
     Ok(availability == UserConsentVerifierAvailability::Available)
 }
 
-pub fn verify() -> Result<(), String> {
+pub fn verify(hwnd: isize) -> Result<(), String> {
     init_mta();
-    let operation = UserConsentVerifier::RequestVerificationAsync(&HSTRING::from(HELLO_TITLE))
-        .map_err(|err| format!("Windows Hello indisponível: {err}"))?;
+    if hwnd == 0 {
+        return Err("Windows Hello indisponível: janela principal não encontrada.".into());
+    }
+    let interop: IUserConsentVerifierInterop =
+        windows::core::factory::<UserConsentVerifier, IUserConsentVerifierInterop>()
+            .map_err(|err| format!("Windows Hello indisponível: {err}"))?;
+    let operation: windows_future::IAsyncOperation<UserConsentVerificationResult> = unsafe {
+        interop.RequestVerificationForWindowAsync(
+            HWND(hwnd as *mut std::ffi::c_void),
+            &HSTRING::from(HELLO_TITLE),
+        )
+    }
+    .map_err(|err| format!("Windows Hello indisponível: {err}"))?;
     let result = pollster::block_on(async move { operation.await })
         .map_err(|err| format!("Windows Hello indisponível: {err}"))?;
     if result == UserConsentVerificationResult::Verified {
@@ -50,11 +63,11 @@ pub fn verify() -> Result<(), String> {
     }
 }
 
-pub fn enable(password: &str) -> Result<(), String> {
+pub fn enable(password: &str, hwnd: isize) -> Result<(), String> {
     if !available()? {
         return Err("Windows Hello não está disponível neste computador.".into());
     }
-    verify()?;
+    verify(hwnd)?;
 
     let encrypted = protect(password.as_bytes(), HELLO_ENTROPY)?;
     let mut payload = HELLO_MAGIC.to_vec();
@@ -84,11 +97,11 @@ pub fn disable() -> Result<(), String> {
     Ok(())
 }
 
-pub fn unlock_password() -> Result<String, String> {
+pub fn unlock_password(hwnd: isize) -> Result<String, String> {
     if !enabled() {
         return Err("Windows Hello não está ativado neste cofre.".into());
     }
-    verify()?;
+    verify(hwnd)?;
 
     let raw = fs::read(hello_path())
         .map_err(|err| format!("Não consegui ler o Windows Hello: {err}"))?;

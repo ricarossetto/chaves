@@ -169,11 +169,22 @@ async fn hello_status() -> HelloStatus {
     })
 }
 
+#[cfg(target_os = "windows")]
+fn raw_hwnd(window: &WebviewWindow) -> isize {
+    window.hwnd().map(|hwnd| hwnd.0 as isize).unwrap_or(0)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn raw_hwnd(_window: &WebviewWindow) -> isize {
+    0
+}
+
 #[tauri::command]
-async fn enable_hello(password: String) -> Result<(), String> {
+async fn enable_hello(password: String, window: WebviewWindow) -> Result<(), String> {
+    let hwnd = raw_hwnd(&window);
     tauri::async_runtime::spawn_blocking(move || {
         default_vault().unlock(&password).map(|_| ())?;
-        hello::enable(&password)
+        hello::enable(&password, hwnd)
     })
     .await
     .map_err(|err| format!("Falha interna: {err}"))?
@@ -185,9 +196,13 @@ fn disable_hello() -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn unlock_with_hello(state: State<'_, AppState>) -> Result<VaultData, String> {
-    let (session, data) = tauri::async_runtime::spawn_blocking(|| {
-        let password = hello::unlock_password()?;
+async fn unlock_with_hello(
+    state: State<'_, AppState>,
+    window: WebviewWindow,
+) -> Result<VaultData, String> {
+    let hwnd = raw_hwnd(&window);
+    let (session, data) = tauri::async_runtime::spawn_blocking(move || {
+        let password = hello::unlock_password(hwnd)?;
         default_vault().unlock(&password)
     })
     .await
