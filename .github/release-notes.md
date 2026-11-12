@@ -1,5 +1,12 @@
 Chaves is a local-first Windows, macOS, and Linux vault for API keys, links, and notes.
 
+## What's new in 0.3.1
+
+- Window animations for opening, minimizing, restoring, closing to the tray, and quitting.
+- Windows Hello now opens owned by the app window, so the prompt no longer appears behind Chaves.
+- Page transitions between projects and notes, with reduced-motion support.
+- Dialog entrances and exits slowed to 200ms for a less abrupt feel.
+
 ## Downloads
 
 | Platform | File |

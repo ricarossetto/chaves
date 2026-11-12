@@ -1,7 +1,7 @@
 {
   "name": "chaves-api",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Local-first desktop vault for API keys, links, and notes.",
   "license": "MIT",
   "author": "Chaves contributors",
