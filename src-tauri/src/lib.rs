@@ -12,6 +12,16 @@ use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
 use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow};
 use vault::{Session, Vault, VaultData};
 
+#[cfg(target_os = "windows")]
+use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
+#[cfg(target_os = "windows")]
+use windows::Win32::UI::Shell::{DefSubclassProc, SetWindowSubclass};
+#[cfg(target_os = "windows")]
+use windows::Win32::UI::WindowsAndMessaging::{
+    AnimateWindow, ShowWindow, AW_BLEND, AW_CENTER, AW_HIDE, SC_MINIMIZE, SW_MINIMIZE,
+    WM_SYSCOMMAND,
+};
+
 struct AppState {
     session: Mutex<Option<Session>>,
 }
@@ -28,14 +38,66 @@ fn default_vault() -> Vault {
 }
 
 fn show_main(app: &AppHandle) {
-    eprintln!("[chaves] show_main");
     if let Some(window) = app.get_webview_window("main") {
-        eprintln!("[chaves] janela main encontrada");
-        let _ = window.show();
+        if window.is_visible().unwrap_or(false) {
+            let _ = window.unminimize();
+            let _ = window.show();
+        } else {
+            animate_show(&window);
+        }
         let _ = window.set_focus();
-    } else {
-        eprintln!("[chaves] janela main ausente");
     }
+}
+
+#[cfg(target_os = "windows")]
+unsafe extern "system" fn window_subclass_proc(
+    hwnd: HWND,
+    msg: u32,
+    wparam: WPARAM,
+    lparam: LPARAM,
+    _id: usize,
+    _data: usize,
+) -> LRESULT {
+    if msg == WM_SYSCOMMAND && (wparam.0 as u32 & 0xFFF0) == SC_MINIMIZE {
+        let _ = AnimateWindow(hwnd, 170, AW_BLEND | AW_CENTER | AW_HIDE);
+        let _ = ShowWindow(hwnd, SW_MINIMIZE);
+        return LRESULT(0);
+    }
+    DefSubclassProc(hwnd, msg, wparam, lparam)
+}
+
+#[cfg(target_os = "windows")]
+fn animate_show(window: &WebviewWindow) {
+    if let Ok(hwnd) = window.hwnd() {
+        if unsafe { AnimateWindow(hwnd, 180, AW_BLEND | AW_CENTER) }.is_err() {
+            let _ = window.show();
+        }
+    } else {
+        let _ = window.show();
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn animate_show(window: &WebviewWindow) {
+    let _ = window.show();
+}
+
+#[cfg(target_os = "windows")]
+fn animate_hide(window: &WebviewWindow) {
+    if let Ok(hwnd) = window.hwnd() {
+        let _ = unsafe { AnimateWindow(hwnd, 160, AW_BLEND | AW_HIDE) };
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn animate_hide(_window: &WebviewWindow) {}
+
+#[tauri::command]
+fn ready_to_show(window: WebviewWindow) {
+    if !window.is_visible().unwrap_or(false) {
+        animate_show(&window);
+    }
+    let _ = window.set_focus();
 }
 
 #[tauri::command]
@@ -137,11 +199,13 @@ async fn unlock_with_hello(state: State<'_, AppState>) -> Result<VaultData, Stri
 
 #[tauri::command]
 fn hide_to_tray(window: WebviewWindow) {
+    animate_hide(&window);
     let _ = window.hide();
 }
 
 #[tauri::command]
-fn quit_app(app: AppHandle) {
+fn quit_app(app: AppHandle, window: WebviewWindow) {
+    animate_hide(&window);
     app.exit(0);
 }
 
@@ -170,13 +234,17 @@ pub fn run() {
                 .on_menu_event(|app, event| match event.id().as_ref() {
                     "show" => show_main(app),
                     "lock" => {
+                        show_main(app);
                         if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
                             let _ = window.emit("tray-lock", ());
                         }
                     }
-                    "quit" => app.exit(0),
+                    "quit" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            animate_hide(&window);
+                        }
+                        app.exit(0);
+                    }
                     _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
@@ -194,6 +262,16 @@ pub fn run() {
                 builder = builder.icon(icon.clone());
             }
             builder.build(app)?;
+
+            #[cfg(target_os = "windows")]
+            if let Some(window) = app.get_webview_window("main") {
+                if let Ok(hwnd) = window.hwnd() {
+                    unsafe {
+                        let _ = SetWindowSubclass(hwnd, Some(window_subclass_proc), 1, 0);
+                    }
+                }
+            }
+
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -205,6 +283,7 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            ready_to_show,
             vault_exists,
             vault_path,
             create_vault,

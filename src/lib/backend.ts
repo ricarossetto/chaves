@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { HelloStatus, VaultData } from "./types";
 
 export const backend = {
+  readyToShow: () => invoke<void>("ready_to_show"),
   vaultExists: () => invoke<boolean>("vault_exists"),
   vaultPath: () => invoke<string>("vault_path"),
   createVault: (password: string) => invoke<VaultData>("create_vault", { password }),

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LoaderCircle } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { listen } from "@tauri-apps/api/event";
 import {
   AnimatedToastStack,
@@ -18,6 +19,7 @@ import { Sidebar } from "@/components/vault/Sidebar";
 import { Topbar, type Filter } from "@/components/vault/Topbar";
 import { backend } from "@/lib/backend";
 import { countItems, newId } from "@/lib/data";
+import { EASE_OUT } from "@/lib/ease";
 import { useI18n } from "@/lib/i18n";
 import type {
   HelloStatus,
@@ -48,6 +50,7 @@ type DialogState =
 
 export default function App() {
   const { t, error: translateError } = useI18n();
+  const reduceMotion = useReducedMotion();
   const [screen, setScreen] = useState<Screen>("loading");
   const [view, setView] = useState<View>("projects");
   const [data, setData] = useState<VaultData | null>(null);
@@ -65,6 +68,7 @@ export default function App() {
 
   const dataRef = useRef<VaultData | null>(null);
   const saveChain = useRef<Promise<unknown>>(Promise.resolve());
+  const shown = useRef(false);
 
   const { toasts, showToast, dismissToast } = useAnimatedToastStack({ limit: 3 });
   const notify = useCallback(
@@ -127,6 +131,12 @@ export default function App() {
     return () => {
       alive = false;
     };
+  }, []);
+
+  useEffect(() => {
+    if (shown.current) return;
+    shown.current = true;
+    void backend.readyToShow();
   }, []);
 
   useEffect(() => {
@@ -612,7 +622,16 @@ export default function App() {
               : "min-h-0 flex-1 overflow-hidden"
           }
         >
-          {view === "projects" ? (
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={view === "projects" ? `project-${activeId ?? "none"}` : "notes"}
+              initial={reduceMotion ? false : { opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -2 }}
+              transition={reduceMotion ? { duration: 0.1 } : { duration: 0.16, ease: EASE_OUT }}
+              className={view === "notes" ? "h-full" : undefined}
+            >
+              {view === "projects" ? (
             <ProjectView
               data={data}
               activeProject={activeProject}
@@ -652,7 +671,9 @@ export default function App() {
               onDraftChange={updateNoteDraft}
               onFlush={flushNotes}
             />
-          )}
+              )}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
 
