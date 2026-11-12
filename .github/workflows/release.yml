@@ -81,7 +81,21 @@ jobs:
         run: npm ci
 
       - name: Build bundles
-        run: npx tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+        shell: bash
+        run: |
+          attempt=1
+          while true; do
+            if npx tauri build --target "${{ matrix.target }}" --bundles "${{ matrix.bundles }}"; then
+              break
+            fi
+            if [ "$RUNNER_OS" != "macOS" ] || [ "$attempt" -ge 2 ]; then
+              exit 1
+            fi
+            attempt=$((attempt + 1))
+            hdiutil detach "/Volumes/Chaves" 2>/dev/null || true
+            hdiutil detach /dev/disk2 2>/dev/null || true
+            sleep 5
+          done
 
       - name: Collect artifacts
         shell: bash
