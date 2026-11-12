@@ -8,7 +8,7 @@
 <p align="center">
   <a href="https://github.com/ricarossetto/chaves/releases/latest"><img src="https://img.shields.io/github/v/release/ricarossetto/chaves?style=flat-square&color=6f7f5b" alt="最新版本" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/ricarossetto/chaves?style=flat-square&color=6f7f5b" alt="MIT 许可证" /></a>
-  <img src="https://img.shields.io/badge/platform-Windows%2010%2F11-5f6f75?style=flat-square" alt="Windows 10 和 11" />
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-5f6f75?style=flat-square" alt="Windows、macOS 和 Linux" />
   <img src="https://img.shields.io/badge/built%20with-Tauri%202-1e201d?style=flat-square" alt="使用 Tauri 2 构建" />
 </p>
 
@@ -39,7 +39,7 @@ API 密钥常常散落在笔记应用、电子表格、`.env` 文件和浏览器
 - API 密钥支持隐藏、显示、复制和账号标签。
 - 链接支持域名预览、打开和复制。
 - 笔记自动保存，带防抖。
-- 可选的 Windows Hello 解锁。主密码由 Windows DPAPI 保护，永不离开本机。
+- 可选的 Windows Hello 解锁（仅 Windows）。主密码由 Windows DPAPI 保护，永不离开本机。
 - 可从应用或托盘锁定。关闭窗口时可让 Chaves 继续在后台运行。
 - 葡萄牙语、英语和中文界面，选择会保存在本地。
 - 自动导入旧版 Chaves 保险库。
@@ -51,22 +51,61 @@ API 密钥常常散落在笔记应用、电子表格、`.env` 文件和浏览器
 
 ## 安装
 
-### 安装程序
+在[最新版本](https://github.com/ricarossetto/chaves/releases/latest)中选择适合你平台的包。
 
-1. 打开[最新版本](https://github.com/ricarossetto/chaves/releases/latest)。
-2. 下载 `Chaves_*_x64-setup.exe`。
-3. 运行安装程序并打开 Chaves。
+| 平台 | 包 |
+| --- | --- |
+| Windows 10/11 x64 | `Chaves_*_x64-setup.exe` |
+| Windows 11 ARM64 | `Chaves_*_arm64-setup.exe` |
+| macOS Apple Silicon | `Chaves_*_aarch64.dmg` |
+| macOS Intel | `Chaves_*_x64.dmg` |
+| Linux x64 | `.AppImage` 或 `.deb` |
+
+### Windows
+
+1. 下载对应架构的安装程序。
+2. 运行安装程序并打开 Chaves。
 
 当前构建未进行代码签名。Windows SmartScreen 可能显示警告；如果你信任该构建，请选择 **更多信息** → **仍要运行**。
 
-### 便携版
+发布页还包含便携版 `chaves-api-windows-*.exe`。它需要 Microsoft Edge WebView2 运行时，Windows 10 和 11 已自带。推荐使用安装程序，因为它会在开始菜单注册应用并处理升级。
 
-发布页还包含独立可执行文件 `chaves-api.exe`。它需要 Microsoft Edge WebView2 运行时，Windows 10 和 11 已自带。推荐使用安装程序，因为它会在开始菜单注册应用并处理升级。
+### macOS
+
+1. 下载对应 Mac 的 DMG：Apple Silicon（`aarch64`）或 Intel（`x64`）。
+2. 打开 DMG，将 Chaves 拖入“应用程序”。
+
+macOS 构建未签名，也未经过公证。首次启动时，在 Finder 中右键点击 Chaves 并选择 **打开**。如果 macOS 仍然阻止，请移除隔离标记：
+
+```bash
+sudo xattr -dr com.apple.quarantine /Applications/Chaves.app
+```
+
+### Linux
+
+**AppImage：**
+
+```bash
+chmod +x Chaves_*.AppImage
+./Chaves_*.AppImage
+```
+
+**Debian/Ubuntu：**
+
+```bash
+sudo apt install ./chaves_*.deb
+```
+
+AppImage 需要 WebKitGTK 4.1 和 Ayatana 应用指示器。在 Debian/Ubuntu 上：
+
+```bash
+sudo apt install libwebkit2gtk-4.1-0 libayatana-appindicator3-1
+```
 
 ### 首次运行
 
 1. 创建至少 8 个字符的主密码。主密码无法恢复，请保存在密码管理器中。
-2. 可选：在此电脑上启用 Windows Hello。
+2. 在 Windows 上可选：在此电脑上启用 Windows Hello。
 3. 创建项目并添加第一个密钥或链接。
 
 ## 安全模型
@@ -78,17 +117,17 @@ API 密钥常常散落在笔记应用、电子表格、`.env` 文件和浏览器
 - Windows Hello 是可选的。启用后，主密码会使用当前 Windows 用户的 **DPAPI** 加密，并保存在保险库旁边的 `hello.bin` 中。Windows Hello 确认用户在场；加密保护仍由 Windows 提供。
 - Chaves 不发起网络请求。字体和资源都随应用打包。
 
-Chaves 保护静态保险库文件。它无法防御已被入侵的电脑、恶意软件、键盘记录器，或已经控制你 Windows 会话的人。
+Chaves 保护静态保险库文件。它无法防御已被入侵的电脑、恶意软件、键盘记录器，或已经控制你系统会话的人。
 
 ## 数据位置
 
-默认：
+| 平台 | 默认保险库 |
+| --- | --- |
+| Windows | `%APPDATA%\ChavesAPI\vault.json` |
+| macOS | `~/Library/Application Support/Chaves/vault.json` |
+| Linux | `$XDG_DATA_HOME/chaves/vault.json` 或 `~/.local/share/chaves/vault.json` |
 
-```text
-%APPDATA%\ChavesAPI\vault.json
-```
-
-启用 Windows Hello 时，`hello.bin` 会放在同一目录。
+启用 Windows Hello 时，`hello.bin` 会放在 Windows 上的保险库旁边。macOS 和 Linux 不提供 Windows Hello。
 
 要使用其他位置，请在打开应用前将环境变量 `CHAVES_VAULT_PATH` 设置为保险库文件的完整路径。如果使用 Windows Hello，请同时备份 `vault.json` 和 `hello.bin`。
 
@@ -96,11 +135,17 @@ Chaves 保护静态保险库文件。它无法防御已被入侵的电脑、恶�
 
 ### 要求
 
-- Windows 10 或 11
 - Node.js 20 或更高版本
 - Rust stable
-- 安装了“使用 C++ 的桌面开发”工作负载的 Visual Studio 生成工具
-- WebView2 运行时
+- **Windows：** 安装了“使用 C++ 的桌面开发”工作负载的 Visual Studio 生成工具，以及 WebView2 运行时
+- **macOS：** Xcode Command Line Tools
+- **Linux：** `libwebkit2gtk-4.1-dev`、`libayatana-appindicator3-dev`、`librsvg2-dev`、`patchelf` 和 `libfuse2`
+
+在 Debian/Ubuntu 上：
+
+```bash
+sudo apt install libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libfuse2
+```
 
 ### 构建
 
@@ -111,7 +156,15 @@ npm install
 npx tauri build
 ```
 
-安装程序输出到 `src-tauri/target/release/bundle/nsis/`。只开发界面时：
+输出写入 `src-tauri/target/release/bundle/`。要显式选择包格式：
+
+```bash
+npx tauri build --bundles nsis        # Windows
+npx tauri build --bundles dmg         # macOS
+npx tauri build --bundles deb,appimage # Linux
+```
+
+只开发界面时：
 
 ```bash
 npm install

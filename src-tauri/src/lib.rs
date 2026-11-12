@@ -1,3 +1,7 @@
+#[cfg(target_os = "windows")]
+mod hello;
+#[cfg(not(target_os = "windows"))]
+#[path = "hello_stub.rs"]
 mod hello;
 mod vault;
 

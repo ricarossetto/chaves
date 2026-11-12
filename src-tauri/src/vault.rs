@@ -138,11 +138,41 @@ impl Vault {
         if let Some(path) = std::env::var_os("CHAVES_VAULT_PATH") {
             return PathBuf::from(path);
         }
-        let base = std::env::var_os("APPDATA")
-            .map(PathBuf::from)
-            .or_else(|| std::env::current_dir().ok())
-            .unwrap_or_else(|| PathBuf::from("."));
-        base.join("ChavesAPI").join("vault.json")
+
+        #[cfg(target_os = "windows")]
+        {
+            let base = std::env::var_os("APPDATA")
+                .map(PathBuf::from)
+                .or_else(|| std::env::current_dir().ok())
+                .unwrap_or_else(|| PathBuf::from("."));
+            return base.join("ChavesAPI").join("vault.json");
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            let base = std::env::var_os("HOME")
+                .map(PathBuf::from)
+                .or_else(|| std::env::current_dir().ok())
+                .unwrap_or_else(|| PathBuf::from("."));
+            return base
+                .join("Library")
+                .join("Application Support")
+                .join("Chaves")
+                .join("vault.json");
+        }
+
+        #[cfg(all(unix, not(target_os = "macos")))]
+        {
+            let base = std::env::var_os("XDG_DATA_HOME")
+                .map(PathBuf::from)
+                .or_else(|| {
+                    std::env::var_os("HOME")
+                        .map(|home| PathBuf::from(home).join(".local").join("share"))
+                })
+                .or_else(|| std::env::current_dir().ok())
+                .unwrap_or_else(|| PathBuf::from("."));
+            return base.join("chaves").join("vault.json");
+        }
     }
 
     pub fn path(&self) -> &Path {
