@@ -37,7 +37,7 @@ export function FolderDialog({ title, initialName, onClose, onSave }: FolderDial
         if (!open) onClose();
       }}
     >
-      <DialogContent className="rounded-xl border-border bg-card sm:max-w-sm">
+      <DialogContent className="rounded-xl border-border bg-card shadow-float sm:max-w-sm">
         <form onSubmit={submit}>
           <DialogHeader>
             <DialogTitle className="font-serif text-[22px] font-normal">{title}</DialogTitle>

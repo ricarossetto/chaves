@@ -30,6 +30,8 @@
     --color-input: var(--input);
     --color-border: var(--border);
     --color-destructive: var(--destructive);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
     --color-accent-foreground: var(--accent-foreground);
     --color-accent: var(--accent);
     --color-muted-foreground: var(--muted-foreground);
@@ -44,6 +46,13 @@
     --color-card: var(--card);
     --color-foreground: var(--foreground);
     --color-background: var(--background);
+    /* Hairline for hover and selected surfaces. Without this key the
+       `border-border-strong` utility compiles to nothing. */
+    --color-border-strong: var(--border-strong);
+    /* Paper depth, exposed as `shadow-paper`, `shadow-lift`, `shadow-float`. */
+    --shadow-paper: var(--elevation-paper);
+    --shadow-lift: var(--elevation-lift);
+    --shadow-float: var(--elevation-float);
     --radius-sm: calc(var(--radius) * 0.6);
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
@@ -70,9 +79,16 @@
     --accent: #e4ddcd;
     --accent-foreground: #2a2c28;
     --destructive: #9b3d30;
+    /* Confirmation green that belongs to the paper palette instead of the
+       SaaS emerald. Used by toasts and saved-state hints. */
+    --success: #4f6b45;
+    --success-foreground: #f4f7f1;
     --border: #d9d3c5;
     --input: #d9d3c5;
     --ring: #8a7748;
+    /* Hairline used by hover and selected states. Declared here so every
+       surface can reach it as `border-border-strong`. */
+    --border-strong: #c6bda9;
     --chart-1: #6f7f5b;
     --chart-2: #a98a4e;
     --chart-3: #6c7c84;
@@ -87,6 +103,54 @@
     --sidebar-accent-foreground: #1e201d;
     --sidebar-border: #d9d3c5;
     --sidebar-ring: #8a7748;
+
+    /* Paper depth. Kept in one place so cards, dialogs and toasts cast the
+       same light instead of each inventing a shadow. Named `elevation-*` to
+       avoid colliding with the `shadow-*` theme keys that read them.
+       Each one carries a 1px inner highlight on the top edge: that is what
+       makes a flat rectangle read as a sheet with a lit edge. */
+    --elevation-paper:
+        inset 0 1px 0 rgba(255, 255, 255, 0.65),
+        0 1px 1px rgba(30, 32, 29, 0.03),
+        0 1px 2px rgba(30, 32, 29, 0.05);
+    --elevation-lift:
+        inset 0 1px 0 rgba(255, 255, 255, 0.75),
+        0 1px 2px rgba(30, 32, 29, 0.05),
+        0 10px 24px -18px rgba(30, 32, 29, 0.35);
+    --elevation-float:
+        inset 0 1px 0 rgba(255, 255, 255, 0.8),
+        0 2px 4px -2px rgba(30, 32, 29, 0.1),
+        0 24px 48px -24px rgba(30, 32, 29, 0.28);
+}
+
+/* Motion tokens for the whole app.
+   Durations and easings come from the transitions.dev scale, renamed to this
+   app's vocabulary. Components read these instead of hardcoding 0.16 / easeOut
+   per file, so one edit retunes every surface. Springs stay in src/lib/ease.ts
+   because physics is not expressible as a CSS duration. */
+:root {
+    --duration-stagger: 40ms;
+    --duration-micro: 80ms;
+    --duration-quick: 150ms;
+    --duration-fast: 250ms;
+    --duration-medium: 350ms;
+    --duration-slow: 400ms;
+    --duration-very-slow: 500ms;
+
+    --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-soft-in-out: ease-in-out;
+    --ease-linear: linear;
+
+    --distance-micro: 4px;
+    --distance-base: 8px;
+    --distance-medium: 12px;
+
+    --scale-large: 0.96;
+    --scale-medium: 0.97;
+    --scale-small: 0.98;
+
+    --blur-small: 2px;
+    --blur-medium: 3px;
 }
 
 @layer base {
@@ -103,6 +167,34 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-synthesis-weight: none;
+    /* Chinese and Portuguese both read better with the optical sizes the
+       variable fonts ship, instead of locking one weight per size. */
+    font-optical-sizing: auto;
+  }
+
+  /* Paper grain over the whole window: one tiled SVG turbulence, a few hundred
+     bytes, no image file and no network. It sits above every surface so cards,
+     dialogs and toasts all share the same paper, and it never takes a pointer
+     event. Deliberately no mix-blend-mode — a blended full-window layer costs
+     GPU for a texture nobody should consciously notice, in a window that stays
+     open all day. */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    pointer-events: none;
+    opacity: 0.06;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23g)'/%3E%3C/svg%3E");
+    background-size: 180px 180px;
+  }
+
+  /* Anyone who asks the system for more contrast gets clean type instead of
+     texture. Also the honest fallback if a GPU chokes on the layer. */
+  @media (prefers-contrast: more) {
+    body::after {
+      display: none;
+    }
   }
 
   h1,
@@ -119,6 +211,21 @@
   button,
   [role="button"] {
     cursor: pointer;
+  }
+
+  /* One focus language: a soft olive halo instead of the browser's blue.
+     Form primitives opt out because shadcn already draws a ring for them —
+     both at once reads as a double border. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  input:focus-visible,
+  textarea:focus-visible,
+  [data-slot="select-trigger"]:focus-visible,
+  [data-slot="dialog-content"]:focus-visible {
+    outline: none;
   }
 }
 
@@ -142,5 +249,118 @@
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #bfb7a5;
+  background: var(--border-strong);
+}
+
+@layer components {
+  /* The ruled margin of the note editor. One hairline, no image, no texture —
+     the cheapest way to turn a textarea into a sheet of paper. Sits in the
+     gutter, left of the text, so it never crosses a glyph. */
+  .note-rule {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 1.5rem;
+    width: 1px;
+    background: color-mix(in srgb, var(--chart-4) 26%, transparent);
+    pointer-events: none;
+  }
+
+  /* A keycap, for keyboard hints in empty states. */
+  .kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.3rem;
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 0.3rem;
+    background: var(--card);
+    color: var(--muted-foreground);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    line-height: 1;
+  }
+
+  /* Copy confirmation: the icon crossfades with a small scale, on the same
+     curve the rest of the app uses. 120ms is short enough to feel instant and
+     long enough to be seen. */
+  .icon-swap {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+  }
+
+  .icon-swap > * {
+    grid-area: 1 / 1;
+    transition:
+      opacity var(--duration-micro) var(--ease-smooth-out),
+      transform var(--duration-micro) var(--ease-smooth-out),
+      filter var(--duration-micro) var(--ease-smooth-out);
+  }
+
+  .icon-swap[data-state="b"] > [data-icon="a"],
+  .icon-swap[data-state="a"] > [data-icon="b"] {
+    opacity: 0;
+    transform: scale(0.72);
+    filter: blur(var(--blur-small));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .icon-swap > * {
+      transition: none;
+    }
+  }
+}
+
+@keyframes hairline-run {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+/* The "no" of a wrong password: a left-right percussion with a small
+   overshoot, 280ms total, then still. Each leg eases on its own so it reads as
+   a shake and not a slide. */
+@keyframes input-shake {
+  0% {
+    transform: translateX(0);
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  28.57% {
+    transform: translateX(6px);
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  57.14% {
+    transform: translateX(-6px);
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  78.57% {
+    transform: translateX(4px);
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.shake {
+  animation: input-shake 280ms linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hairline-run {
+    animation: none !important;
+    transform: none !important;
+    width: 100% !important;
+  }
+
+  .shake {
+    animation: none !important;
+  }
 }

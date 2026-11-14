@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { LoaderCircle } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { listen } from "@tauri-apps/api/event";
 import {
@@ -19,7 +18,7 @@ import { Sidebar } from "@/components/vault/Sidebar";
 import { Topbar, type Filter } from "@/components/vault/Topbar";
 import { backend } from "@/lib/backend";
 import { countItems, newId } from "@/lib/data";
-import { EASE_OUT } from "@/lib/ease";
+import { DURATION, EASE_OUT } from "@/lib/ease";
 import { useI18n } from "@/lib/i18n";
 import type {
   HelloStatus,
@@ -544,8 +543,28 @@ export default function App() {
 
   if (screen === "loading") {
     return (
-      <div className="grid min-h-screen place-items-center bg-background">
-        <LoaderCircle className="size-6 animate-spin text-muted-foreground" />
+      <div className="relative grid min-h-screen place-items-center">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(60% 55% at 50% 10%, rgba(138,119,72,0.09), transparent 70%)",
+          }}
+        />
+        {/* The first frame is the vault being read and decrypted. A hairline
+            that fills reads as progress; a spinner reads as a hang. */}
+        <div className="relative w-[180px]">
+          <div className="h-px overflow-hidden rounded-full bg-border">
+            <div
+              className="h-full w-1/3 bg-primary"
+              style={{ animation: "hairline-run 1.15s var(--ease-smooth-out) infinite" }}
+            />
+          </div>
+          <p className="mt-4 text-center text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
+            {t("Local vault")}
+          </p>
+        </div>
       </div>
     );
   }
@@ -625,10 +644,14 @@ export default function App() {
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={view === "projects" ? `project-${activeId ?? "none"}` : "notes"}
-              initial={reduceMotion ? false : { opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -2 }}
-              transition={reduceMotion ? { duration: 0.1 } : { duration: 0.16, ease: EASE_OUT }}
+              initial={reduceMotion ? false : { opacity: 0, y: 5, filter: "blur(2px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              exit={
+                reduceMotion
+                  ? { opacity: 0 }
+                  : { opacity: 0, y: -3, filter: "blur(2px)", transition: { duration: DURATION.quick, ease: EASE_OUT } }
+              }
+              transition={{ duration: DURATION.fast, ease: EASE_OUT }}
               className={view === "notes" ? "h-full" : undefined}
             >
               {view === "projects" ? (
@@ -682,7 +705,7 @@ export default function App() {
         onDismiss={dismissToast}
         position="bottom-right"
         fixed
-        classNames={{ surface: "rounded-lg bg-card shadow-sm backdrop-blur-none" }}
+        classNames={{ surface: "rounded-lg bg-card shadow-float backdrop-blur-none" }}
       />
 
       {dialog?.type === "project" && (

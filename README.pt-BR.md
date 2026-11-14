@@ -43,6 +43,7 @@ Chaves de API costumam acabar espalhadas entre aplicativos de notas, planilhas, 
 - Bloquear pelo aplicativo ou pela bandeja. Ao fechar a janela, o Chaves pode continuar em segundo plano.
 - Interface em português, inglês e chinês, com a escolha salva localmente.
 - Importação automática de cofres antigos do Chaves.
+- Teclado: `Ctrl K` (ou `⌘K`) foca a busca, `Esc` limpa.
 - Sem conta, sem sincronização, sem análise de uso e sem requisições de rede.
 
 ## Captura de tela

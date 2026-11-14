@@ -25,7 +25,7 @@ export function CloseDialog({ onCancel, onHide, onQuit }: CloseDialogProps) {
         if (!open) onCancel();
       }}
     >
-      <DialogContent className="rounded-xl border-border bg-card sm:max-w-md">
+      <DialogContent className="rounded-xl border-border bg-card shadow-float sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="font-serif text-[22px] font-normal">
             {t("Close Chaves?")}

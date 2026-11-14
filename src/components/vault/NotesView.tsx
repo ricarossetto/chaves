@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { motion } from "motion/react";
 import { NotebookPen, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/beui/button";
 import { useI18n } from "@/lib/i18n";
@@ -15,11 +16,13 @@ function NoteEditor({ note, onDraftChange, onFlush }: NoteEditorProps) {
   const { t, date } = useI18n();
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
+  const [state, setState] = useState<"idle" | "typing" | "saved">("idle");
   const timer = useRef<number | null>(null);
   const dirty = useRef(false);
 
   const schedule = (nextTitle: string, nextBody: string) => {
     dirty.current = true;
+    setState("typing");
     onDraftChange(note.id, { title: nextTitle, body: nextBody });
 
     if (timer.current !== null) window.clearTimeout(timer.current);
@@ -27,6 +30,7 @@ function NoteEditor({ note, onDraftChange, onFlush }: NoteEditorProps) {
       timer.current = null;
       dirty.current = false;
       onFlush();
+      setState("saved");
     }, 500);
   };
 
@@ -43,23 +47,47 @@ function NoteEditor({ note, onDraftChange, onFlush }: NoteEditorProps) {
     };
   }, [onFlush]);
 
-  return (
-    <div className="mx-auto flex h-full w-full max-w-3xl flex-col px-10 py-8">
-      <input
-        value={title}
-        onChange={(event) => {
-          setTitle(event.target.value);
-          schedule(event.target.value, body);
-        }}
-        placeholder={t("No title")}
-        aria-label={t("Title of the note")}
-        className="w-full bg-transparent font-serif text-[30px] leading-tight tracking-[-0.01em] text-foreground outline-none placeholder:text-muted-foreground/40"
-      />
+  // The save is automatic, so the only thing worth saying is that it happened.
+  // "Saved" fades back out after a beat instead of sitting there forever.
+  useEffect(() => {
+    if (state !== "saved") return;
+    const timer = window.setTimeout(() => setState("idle"), 1600);
+    return () => window.clearTimeout(timer);
+  }, [state]);
 
-      <div className="mt-2 flex items-center gap-2 text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
-        <span>{t("Note")}</span>
-        <span>·</span>
-        <span>{date(note.updatedAt)}</span>
+  return (
+    <div className="relative mx-auto flex h-full w-full max-w-3xl flex-col px-10 py-8">
+      {/* The ruled margin. Cheapest possible way to make the editor read as a
+          sheet instead of a textarea: one hairline, no texture, no image. */}
+      <span aria-hidden="true" className="note-rule" />
+
+      <div className="relative">
+        <input
+          value={title}
+          onChange={(event) => {
+            setTitle(event.target.value);
+            schedule(event.target.value, body);
+          }}
+          placeholder={t("No title")}
+          aria-label={t("Title of the note")}
+          className="w-full bg-transparent font-serif text-[30px] leading-tight tracking-[-0.01em] text-foreground outline-none placeholder:text-muted-foreground/40"
+        />
+
+        <div className="mt-2 flex items-center gap-2 text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
+          <span>{t("Note")}</span>
+          <span>·</span>
+          <span>{date(note.updatedAt)}</span>
+          <motion.span
+            initial={false}
+            animate={{ opacity: state === "idle" ? 0 : 1 }}
+            transition={{ duration: 0.2 }}
+            className="ml-1 inline-flex items-center gap-1 text-[10px] tracking-[0.1em] normal-case"
+            aria-live="polite"
+          >
+            <span className="size-1 rounded-full bg-[var(--chart-1)]" />
+            {state === "typing" ? t("Saving…") : t("Saved")}
+          </motion.span>
+        </div>
       </div>
 
       <textarea
@@ -70,7 +98,7 @@ function NoteEditor({ note, onDraftChange, onFlush }: NoteEditorProps) {
         }}
         placeholder={t("Write something…")}
         aria-label={t("Content of the note")}
-        className="mt-6 min-h-0 flex-1 resize-none bg-transparent text-[14px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/40"
+        className="relative mt-6 min-h-0 flex-1 resize-none bg-transparent text-[14px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/40"
       />
     </div>
   );
@@ -136,13 +164,21 @@ export function NotesView({
               <div
                 key={note.id}
                 className={cn(
-                  "group flex items-start rounded-md transition-colors",
+                  "group relative flex items-start rounded-md transition-colors duration-150",
                   active ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/60",
                 )}
               >
+                {active && (
+                  <motion.span
+                    layoutId="notes-active-note"
+                    className="absolute inset-y-1 left-0 w-[2px] rounded-full bg-primary"
+                    transition={{ type: "spring", stiffness: 480, damping: 40, mass: 0.6 }}
+                  />
+                )}
                 <button
                   type="button"
                   onClick={() => onSelect(note.id)}
+                  aria-current={active ? "true" : undefined}
                   className="min-w-0 flex-1 px-2.5 py-2 text-left"
                 >
                   <p

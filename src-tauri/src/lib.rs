@@ -3,6 +3,7 @@ mod hello;
 #[cfg(not(target_os = "windows"))]
 #[path = "hello_stub.rs"]
 mod hello;
+mod tray;
 mod vault;
 
 use std::sync::Mutex;
@@ -47,6 +48,9 @@ fn show_main(app: &AppHandle) {
         }
         let _ = window.set_focus();
     }
+    // Cheapest moment to notice the user flipped the Windows theme: the glyph
+    // has to be dark on a light taskbar and cream on a dark one.
+    tray::refresh(app);
 }
 
 #[cfg(target_os = "windows")]
@@ -242,7 +246,7 @@ pub fn run() {
             let separator = PredefinedMenuItem::separator(app)?;
             let menu = Menu::with_items(app, &[&show, &lock, &separator, &quit])?;
 
-            let mut builder = TrayIconBuilder::new()
+            let mut builder = TrayIconBuilder::with_id("main")
                 .tooltip("Chaves")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
@@ -273,11 +277,16 @@ pub fn run() {
                     }
                 });
 
-            if let Some(icon) = app.default_window_icon() {
-                builder = builder.icon(icon.clone());
+            // The tray gets its own glyph, not the 512px window icon squeezed
+            // into 16px. See src/tray.rs for why the two are different marks.
+            builder = builder.icon(tray::icon());
+            // macOS owns the menu bar contrast: a template image lets the system
+            // invert the glyph for light and dark menu bars.
+            #[cfg(target_os = "macos")]
+            {
+                builder = builder.icon_as_template(true);
             }
             builder.build(app)?;
-
             #[cfg(target_os = "windows")]
             if let Some(window) = app.get_webview_window("main") {
                 if let Ok(hwnd) = window.hwnd() {
@@ -295,6 +304,11 @@ pub fn run() {
                 api.prevent_close();
                 eprintln!("[chaves] fechamento prevenido");
                 let _ = window.emit("close-requested", ());
+            }
+            // Flipping the Windows theme does not restart the app, but the tray
+            // glyph has to change colour with the taskbar.
+            if let tauri::WindowEvent::ThemeChanged(_) = event {
+                tray::refresh(window.app_handle());
             }
         })
         .invoke_handler(tauri::generate_handler![

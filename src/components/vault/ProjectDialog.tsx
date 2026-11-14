@@ -62,7 +62,7 @@ export function ProjectDialog({
         if (!open) onClose();
       }}
     >
-      <DialogContent className="rounded-xl border-border bg-card sm:max-w-md">
+      <DialogContent className="rounded-xl border-border bg-card shadow-float sm:max-w-md">
         <form onSubmit={submit}>
           <DialogHeader>
             <DialogTitle className="font-serif text-[22px] font-normal">
@@ -92,23 +92,32 @@ export function ProjectDialog({
 
             <div className="grid gap-2">
               <Label className="text-[12px] font-medium text-foreground/80">{t("Color")}</Label>
-              <div className="flex flex-wrap gap-2">
-                {PROJECT_COLORS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setColor(option.value)}
-                    aria-label={t(option.name)}
-                    title={t(option.name)}
-                    className={cn(
-                      "grid size-7 place-items-center rounded-full border-2 transition-transform hover:scale-105",
-                      color === option.value ? "border-foreground" : "border-transparent",
-                    )}
-                    style={{ background: option.value }}
-                  >
-                    {color === option.value && <Check className="size-3 text-white" />}
-                  </button>
-                ))}
+              {/* Eight swatches, one row of dots. The chosen one gets a ring and
+                  a check; the rest only answer to hover. */}
+              <div className="flex flex-wrap gap-2.5">
+                {PROJECT_COLORS.map((option) => {
+                  const selected = color === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setColor(option.value)}
+                      aria-label={t(option.name)}
+                      aria-pressed={selected}
+                      title={t(option.name)}
+                      className={cn(
+                        "grid size-7 place-items-center rounded-full transition-[transform,box-shadow] duration-150",
+                        "hover:scale-105",
+                        selected
+                          ? "ring-2 ring-foreground/70 ring-offset-2 ring-offset-card"
+                          : "ring-1 ring-black/5",
+                      )}
+                      style={{ background: option.value }}
+                    >
+                      {selected && <Check className="size-3.5 text-white" strokeWidth={3} />}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

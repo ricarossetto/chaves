@@ -43,6 +43,7 @@ API keys usually end up scattered across notes apps, spreadsheets, `.env` files,
 - Lock from the app or the tray. Closing the window can keep Chaves running in the background.
 - Portuguese, English, and Chinese interface, with the choice saved locally.
 - Import of older Chaves vaults.
+- Keyboard: `Ctrl K` (or `⌘K`) focuses search, `Esc` clears it.
 - No account, no sync, no analytics, no network requests.
 
 ## Screenshot

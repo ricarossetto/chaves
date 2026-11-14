@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "motion/react";
 import { Eye, EyeOff, KeyRound, Link2 } from "lucide-react";
 import { Button } from "@/components/beui/button";
 import {
@@ -91,7 +92,7 @@ export function ItemDialog({
         if (!open) onClose();
       }}
     >
-      <DialogContent className="rounded-xl border-border bg-card sm:max-w-lg">
+      <DialogContent className="rounded-xl border-border bg-card shadow-float sm:max-w-lg">
         <form onSubmit={submit}>
           <DialogHeader>
             <DialogTitle className="font-serif text-[22px] font-normal">
@@ -106,33 +107,43 @@ export function ItemDialog({
 
           <div className="grid gap-4 py-5">
             {!item && (
-              <div className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-background p-1">
-                <button
-                  type="button"
-                  onClick={() => setKind("key")}
-                  className={cn(
-                    "flex items-center justify-center gap-2 rounded-md px-3 py-2 text-[13px] transition-colors",
-                    kind === "key"
-                      ? "bg-card text-foreground shadow-[0_1px_2px_rgba(30,32,29,0.05)]"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <KeyRound className="size-4" strokeWidth={1.5} />
-                  {t("Key")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setKind("link")}
-                  className={cn(
-                    "flex items-center justify-center gap-2 rounded-md px-3 py-2 text-[13px] transition-colors",
-                    kind === "link"
-                      ? "bg-card text-foreground shadow-[0_1px_2px_rgba(30,32,29,0.05)]"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <Link2 className="size-4" strokeWidth={1.5} />
-                  {t("Link")}
-                </button>
+              <div className="relative grid grid-cols-2 gap-1 rounded-lg border border-border bg-background p-1">
+                {(
+                  [
+                    { id: "key" as ItemKind, label: t("Key"), Icon: KeyRound },
+                    { id: "link" as ItemKind, label: t("Link"), Icon: Link2 },
+                  ] as const
+                ).map(({ id, label, Icon }) => {
+                  const active = kind === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setKind(id)}
+                      className={cn(
+                        "relative flex items-center justify-center gap-2 rounded-md px-3 py-2 text-[13px] transition-colors duration-150",
+                        active
+                          ? "text-foreground"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {/* The selection is one surface sliding between the two
+                          halves, not two backgrounds trading places. */}
+                      {active && (
+                        <motion.span
+                          layoutId="item-kind-pill"
+                          className="absolute inset-0 rounded-md bg-card shadow-paper"
+                          transition={{ type: "spring", stiffness: 480, damping: 40, mass: 0.6 }}
+                        />
+                      )}
+                      <span className="relative inline-flex items-center gap-2">
+                        <Icon className="size-4" strokeWidth={1.5} />
+                        {label}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             )}
 

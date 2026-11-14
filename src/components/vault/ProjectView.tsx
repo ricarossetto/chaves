@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   FolderPlus,
   KeyRound,
@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { EASE_OUT } from "@/lib/ease";
 import { useI18n } from "@/lib/i18n";
 import {
   projectColor,
@@ -62,23 +63,33 @@ function FilterChip({
   label,
   count,
   onClick,
+  layoutId,
 }: {
   active: boolean;
   label: string;
   count: number;
   onClick: () => void;
+  layoutId: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={cn(
-        "inline-flex items-baseline gap-1.5 rounded-md px-2 py-1 text-[12px] transition-colors",
-        active ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground",
+        "relative inline-flex items-baseline gap-1.5 rounded-md px-2 py-1 text-[12px] transition-colors duration-150",
+        active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
       )}
     >
-      {label}
-      <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
+      {active && (
+        <motion.span
+          layoutId={layoutId}
+          className="absolute inset-0 rounded-md bg-secondary"
+          transition={{ type: "spring", stiffness: 480, damping: 40, mass: 0.6 }}
+        />
+      )}
+      <span className="relative">{label}</span>
+      <span className="relative font-mono text-[10px] text-muted-foreground tabular-nums">
         {count}
       </span>
     </button>
@@ -104,6 +115,7 @@ export function ProjectView({
   onToast,
 }: ProjectViewProps) {
   const { t, count } = useI18n();
+  const reduce = useReducedMotion();
   const needle = query.trim().toLowerCase();
   const searching = needle.length > 0;
 
@@ -139,8 +151,15 @@ export function ProjectView({
   if (data.projects.length === 0) {
     return (
       <div className="grid min-h-[70vh] place-items-center px-8 py-10">
-        <div className="w-full max-w-md border border-border bg-card/60 px-8 py-12 text-center">
-          <FolderPlus className="mx-auto size-6 text-muted-foreground" strokeWidth={1.25} />
+        <motion.div
+          initial={reduce ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: EASE_OUT }}
+          className="w-full max-w-md rounded-xl border border-border bg-card/70 px-8 py-12 text-center shadow-paper"
+        >
+          <span className="mx-auto grid size-10 place-items-center rounded-full border border-border bg-background">
+            <FolderPlus className="size-4 text-muted-foreground" strokeWidth={1.4} />
+          </span>
           <h2 className="mt-4 font-serif text-[22px] leading-tight text-foreground">
             {t("Create your first project")}
           </h2>
@@ -151,7 +170,7 @@ export function ProjectView({
             <Plus className="size-4" />
             {t("New project")}
           </Button>
-        </div>
+        </motion.div>
       </div>
     );
   }
@@ -179,11 +198,16 @@ export function ProjectView({
 
   return (
     <div className="mx-auto w-full max-w-[1180px] px-8 py-8">
+      {/* The project dot keeps its colour, but the title itself stays put: a
+          heading that slides on every navigation is noise, not hierarchy. */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">
             <span
-              className="size-2 shrink-0 rounded-full"
+              className={cn(
+                "size-2 shrink-0 rounded-full transition-colors duration-200",
+                searching && "animate-pulse",
+              )}
               style={{
                 background: searching ? "var(--primary)" : projectColor(activeProject?.color ?? ""),
               }}
@@ -270,6 +294,7 @@ export function ProjectView({
             label={t("All")}
             count={total}
             onClick={() => onFolderFilterChange("all")}
+            layoutId="folder-filter-pill"
           />
 
           {folders.map((folder) => {
@@ -277,23 +302,28 @@ export function ProjectView({
             return (
               <div
                 key={folder.id}
-                className={cn(
-                  "flex items-center rounded-md transition-colors",
-                  active ? "bg-secondary" : "",
-                )}
+                className="relative flex items-center rounded-md transition-colors"
               >
                 <button
                   type="button"
                   onClick={() => onFolderFilterChange(folder.id)}
+                  aria-pressed={active}
                   className={cn(
-                    "px-2 py-1 text-[12px] transition-colors",
+                    "relative rounded-md px-2 py-1 text-[12px] transition-colors duration-150",
                     active
                       ? "text-foreground"
                       : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {folder.name}
-                  <span className="ml-1 font-mono text-[10px] text-muted-foreground tabular-nums">
+                  {active && (
+                    <motion.span
+                      layoutId="folder-filter-pill"
+                      className="absolute inset-0 rounded-md bg-secondary"
+                      transition={{ type: "spring", stiffness: 480, damping: 40, mass: 0.6 }}
+                    />
+                  )}
+                  <span className="relative">{folder.name}</span>
+                  <span className="relative ml-1 font-mono text-[10px] text-muted-foreground tabular-nums">
                     {folderCount(folder.id)}
                   </span>
                 </button>
@@ -331,6 +361,7 @@ export function ProjectView({
             label={t("No folder")}
             count={unassigned}
             onClick={() => onFolderFilterChange("none")}
+            layoutId="folder-filter-pill"
           />
         </div>
       )}
@@ -338,7 +369,7 @@ export function ProjectView({
       <div className="mt-7">
         {searching ? (
           searchResults.length === 0 ? (
-            <div className="border-t border-border pt-8">
+            <div className="mx-auto max-w-xl rounded-xl border border-dashed border-border px-8 py-12 text-center">
               <h3 className="font-serif text-[18px] text-foreground">{t("Nothing found")}</h3>
               <p className="mt-1 text-[12px] text-muted-foreground">
                 {t("Try another term or clear the search.")}
@@ -362,12 +393,38 @@ export function ProjectView({
           )
         ) : activeProject ? (
           projectItems.length === 0 ? (
-            <div className="border-t border-border pt-8">
+            <motion.div
+              initial={reduce ? false : { opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: EASE_OUT }}
+              className="mx-auto max-w-xl rounded-xl border border-dashed border-border px-8 py-12 text-center"
+            >
               <h3 className="font-serif text-[18px] text-foreground">{emptyTitle}</h3>
-              <p className="mt-1 max-w-md text-[12px] leading-relaxed text-muted-foreground">
+              <p className="mx-auto mt-1 max-w-md text-[12px] leading-relaxed text-muted-foreground">
                 {emptyDescription}
               </p>
-            </div>
+              {total === 0 && (
+                <div className="mt-5 flex items-center justify-center gap-2">
+                  <Button
+                    size="sm"
+                    className="rounded-lg"
+                    onClick={() => onNewItem(activeProject.id, "key", defaultFolderId)}
+                  >
+                    <KeyRound className="size-4" />
+                    {t("New key")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="rounded-lg"
+                    onClick={() => onNewItem(activeProject.id, "link", defaultFolderId)}
+                  >
+                    <Link2 className="size-4" />
+                    {t("New link")}
+                  </Button>
+                </div>
+              )}
+            </motion.div>
           ) : (
             <motion.div layout className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <AnimatePresence mode="popLayout">

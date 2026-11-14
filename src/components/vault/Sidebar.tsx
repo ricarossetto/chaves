@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "motion/react";
 import {
   ChevronRight,
   Folder,
@@ -62,14 +63,30 @@ function Summary({ keys, links }: { keys: number; links: number }) {
       <div className="mt-2.5 flex h-1.5 overflow-hidden rounded-full bg-border/70">
         {total > 0 && (
           <>
-            <div className="h-full bg-[var(--chart-1)]" style={{ width: `${keyShare}%` }} />
-            <div className="h-full bg-[var(--chart-2)]" style={{ width: `${100 - keyShare}%` }} />
+            <motion.div
+              className="h-full bg-[var(--chart-1)]"
+              initial={false}
+              animate={{ width: `${keyShare}%` }}
+              transition={{ type: "spring", stiffness: 260, damping: 34, mass: 0.6 }}
+            />
+            <motion.div
+              className="h-full bg-[var(--chart-2)]"
+              initial={false}
+              animate={{ width: `${100 - keyShare}%` }}
+              transition={{ type: "spring", stiffness: 260, damping: 34, mass: 0.6 }}
+            />
           </>
         )}
       </div>
       <div className="mt-2 flex justify-between text-[11px] text-muted-foreground">
-        <span>{count("key", keys)}</span>
-        <span>{count("link", links)}</span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-1 rounded-full bg-[var(--chart-1)]" />
+          {count("key", keys)}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-1 rounded-full bg-[var(--chart-2)]" />
+          {count("link", links)}
+        </span>
       </div>
     </div>
   );
@@ -89,23 +106,36 @@ function ProjectRow({
   return (
     <div
       className={cn(
-        "flex items-center rounded-md transition-colors",
+        "relative flex items-center rounded-md transition-colors duration-150",
         nested && "ml-4",
         active ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/60",
       )}
     >
+      {/* One bar slides between rows instead of each row fading its own. It
+          reads as a single cursor in the list, which is what it is. */}
+      {active && (
+        <motion.span
+          layoutId="sidebar-active-project"
+          className="absolute inset-y-1 left-0 w-[2px] rounded-full bg-primary"
+          transition={{ type: "spring", stiffness: 480, damping: 40, mass: 0.6 }}
+        />
+      )}
       <button
         type="button"
         onClick={() => onSelect(project.id)}
+        aria-current={active ? "true" : undefined}
         className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2 text-left"
       >
         <span
-          className="size-1.5 shrink-0 rounded-full"
-          style={{ background: projectColor(project.color) }}
+          className="size-1.5 shrink-0 rounded-full transition-transform duration-150"
+          style={{
+            background: projectColor(project.color),
+            transform: active ? "scale(1.25)" : undefined,
+          }}
         />
         <span
           className={cn(
-            "truncate text-[13px]",
+            "truncate text-[13px] transition-colors",
             active ? "text-foreground" : "text-foreground/70",
           )}
         >
@@ -159,7 +189,7 @@ export function Sidebar({
           alt=""
           aria-hidden="true"
           draggable={false}
-          className="size-8"
+          className="size-8 rounded-[9px] shadow-paper"
         />
         <div>
           <p className="font-serif text-[15px] leading-none text-foreground">Chaves</p>
@@ -170,38 +200,43 @@ export function Sidebar({
       </div>
 
       <nav className="grid gap-1 px-3 pb-3" aria-label={t("Projects")}>
-        <button
-          type="button"
-          onClick={() => onViewChange("projects")}
-          className={cn(
-            "flex items-center gap-2 rounded-md px-2.5 py-2 text-[13px] transition-colors",
-            view === "projects"
-              ? "bg-sidebar-accent text-foreground"
-              : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
-          )}
-        >
-          <Folder className="size-4" strokeWidth={1.5} />
-          {t("Projects")}
-          <span className="ml-auto font-mono text-[10px] text-muted-foreground">
-            {projects.length}
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => onViewChange("notes")}
-          className={cn(
-            "flex items-center gap-2 rounded-md px-2.5 py-2 text-[13px] transition-colors",
-            view === "notes"
-              ? "bg-sidebar-accent text-foreground"
-              : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
-          )}
-        >
-          <NotebookPen className="size-4" strokeWidth={1.5} />
-          {t("Notes")}
-          <span className="ml-auto font-mono text-[10px] text-muted-foreground">
-            {notesCount}
-          </span>
-        </button>
+        {(
+          [
+            { id: "projects", label: t("Projects"), count: projects.length, Icon: Folder },
+            { id: "notes", label: t("Notes"), count: notesCount, Icon: NotebookPen },
+          ] as const
+        ).map(({ id, label, count, Icon }) => {
+          const active = view === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onViewChange(id)}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "relative flex items-center gap-2 rounded-md px-2.5 py-2 text-[13px] transition-colors duration-150",
+                active
+                  ? "text-foreground"
+                  : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground",
+              )}
+            >
+              {active && (
+                <motion.span
+                  layoutId="sidebar-view-pill"
+                  className="absolute inset-0 rounded-md bg-sidebar-accent"
+                  transition={{ type: "spring", stiffness: 480, damping: 40, mass: 0.6 }}
+                />
+              )}
+              <span className="relative inline-flex items-center gap-2">
+                <Icon className="size-4" strokeWidth={1.5} />
+                {label}
+              </span>
+              <span className="relative ml-auto font-mono text-[10px] text-muted-foreground tabular-nums">
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </nav>
 
       <div className="flex items-center justify-between px-5 pb-2">
